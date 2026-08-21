@@ -21,3 +21,7 @@ button { font: inherit; }.app { min-height: 100vh; padding: 40px 3.4vw 28px; bac
   overflow: hidden;
   position: relative;
 }
+
+.racer.waiting {
+  opacity: .36;
+}
