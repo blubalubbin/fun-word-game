@@ -40,3 +40,22 @@ button { font: inherit; }.app { min-height: 100vh; padding: 40px 3.4vw 28px; bac
     font-size: 9px;
   }
 }
+
+.copy span.completed {
+  color: var(--completed-color);
+  -webkit-text-stroke: .012em color-mix(in srgb, var(--completed-color) 35%, #111);
+  paint-order: stroke fill;
+}
+
+.copy span.player-position {
+  color: var(--position-contrast, #111);
+  -webkit-text-stroke: .035em var(--position-color, #075cff);
+  paint-order: stroke fill;
+  text-shadow: 0 .025em .04em color-mix(in srgb, var(--position-contrast, #111) 28%, transparent);
+  background: color-mix(in srgb, var(--position-color, #075cff) 13%, transparent);
+  box-shadow: inset 0 -.075em 0 var(--position-color, #075cff);
+}
+
+.copy span.player-position.overlap {
+  box-shadow: inset 0 -.12em 0 var(--position-color);
+}
