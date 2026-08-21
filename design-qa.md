@@ -2,35 +2,42 @@
 
 ## Evidence
 
-- Source visual truth: `/Users/tim/.codex/generated_images/01a02368-850b-79d2-bc79-8b2e07695ff4/exec-48af3866-8453-4cef-a6e6-c34cb0d960c4.png`
+- Source visual truth: `reference/selected-design.png`
 - Implementation screenshot: `implementation-active.png`
 - Same-input comparison: `design-comparison.png`
-- Source pixels: 1487 x 1058. Implementation pixels / CSS viewport: 1280 x 930 at 1x. The comparison image uses contain-fit normalisation to put both full views into adjacent equal 640 x 720 panels.
-- Compared state: an active typing race with an entered prefix and the caret visible.
-- Interaction checks: keyboard entry, live WPM/accuracy/rhythm updates, wrong-character state, restart, completion unlock, and font switcher. Browser console errors: none.
+- Source pixels: 1487 x 1058. Implementation pixels / CSS viewport: 1280 x 930 at 1x. The comparison uses contain-fit normalization in adjacent 744 x 529 panels.
+- Compared state: a live two-player race with both players overlapping on the same expected character.
+- Focused interaction evidence: the transparent typing input measured 350 x 499 CSS px in a 390 px mobile-width browser pass, accepted focus from a typing-panel click, exposed `inputMode=text` at 16 px, rejected an incorrect key without advancing, and synchronized progress between host and guest.
+- Console errors checked after the final multiplayer and input passes: none.
 
 **Findings**
 
-- No actionable P0, P1, or P2 differences.
-- [P3] The implementation uses a slightly heavier geometric sans and a different sentence from the concept. This is intentional: Figtree is a freely available, IKEA-inspired functional default, and the sentence gives the game its own content while preserving the source hierarchy, scale, and colour treatment.
-- [P3] The implementation adds an explicit player lane and an invite action. These are intentional functional additions needed for keyboard play and the requested friend-race flow; they retain the source's thin, text-only progress treatment.
+- No actionable P0, P1, or P2 differences remain.
+- [P3] The implementation uses a slightly heavier geometric sans and game-specific sentence. This remains an intentional product adaptation of the reference hierarchy.
+- [P3] Live room status, waiting lanes, and the invite action add functional information not present in the static concept while preserving its type-led density.
 
 ## Required Fidelity Surfaces
 
-- Fonts and typography: passed. The oversized active copy, monospaced labels, tight tracking, strong weight contrast, and optional unlocked display face preserve the target's typographic hierarchy.
-- Spacing and layout rhythm: passed. The warm full-canvas layout retains the header, four slim race lanes, large central typing space, and four-part metric rail.
-- Colors and visual tokens: passed. Off-white base, black active type, pale future type, cobalt action/focus, tomato and yellow progress lanes map directly to the selected direction.
-- Image quality and asset fidelity: passed. The selected design contains no required imagery, illustrations, logos, or avatars; the implementation introduces none.
-- Copy and content: passed. Product copy is game-specific while preserving the reference's role and visual density.
+- Fonts and typography: passed. Oversized active copy, compact monospaced labels, tight tracking, and the unlocked display face preserve the reference hierarchy.
+- Spacing and layout rhythm: passed. The warm full-canvas layout retains the header, four thin race lanes, central typing field, and four-part metric rail.
+- Colors and visual tokens: passed. The off-white, black, cobalt, tomato, and yellow palette remains intact; self green and HSV overlap cyan extend it coherently for live presence.
+- Image quality and asset fidelity: passed. The design contains no required imagery or icons, and none were introduced.
+- Copy and content: passed. Game-specific status and instruction copy remain short and visually subordinate.
+
+## Comparison History
+
+1. Earlier implementation used a 1 px input with `pointer-events: none`, placed the caret after the expected letter, and did not expose overlapping player positions.
+2. The input became a full-panel direct tap target, the caret moved to the previous character edge, the expected character gained a tinted underline, and shared positions gained HSV color mixing.
+3. Post-fix browser evidence confirmed focusable mobile geometry, error-gated typing, bidirectional multiplayer updates, cyan `#03add3` for green/blue overlap, and no console errors.
 
 ## Implementation Checklist
 
-1. Keep the keyboard input as the primary interaction surface.
-2. Keep real-time multiplayer as a future backend upgrade; the current invite link supports a shareable mock room and live local race presentation.
-3. Preserve the font-unlock interaction when adding more typefaces.
+1. Preserve the full-panel mobile input target.
+2. Keep the expected-character highlight and preceding caret paired.
+3. Keep player colors attached to room identities and blend only when positions coincide.
 
 ## Follow-up Polish
 
-- Add hosted room synchronization and player presence when a backend choice is made.
+- Test the deployed build on physical iOS Safari and Pixel Chrome because desktop browser emulation cannot prove virtual-keyboard behavior on those devices.
 
 final result: passed

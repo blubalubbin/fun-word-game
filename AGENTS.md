@@ -13,5 +13,7 @@ When implementing from a selected generated mock, treat that image as the source
 - Default to an IKEA-inspired freely licensed geometric sans; winning a race unlocks an alternate display font.
 - Typing is error-gated: an incorrect key does not advance the cursor, and Backspace is unnecessary and does not move progress backward.
 - Friend races use shareable peer-to-peer rooms with one host and up to three live guests; never show simulated racers as if they were connected players.
+- The full typing panel must remain a direct mobile input target so iPhone and Chromium keyboards can open from a tap.
+- Put the caret immediately before the expected character, highlight that character clearly, and HSV-blend player colors at shared character positions (green plus blue should read as cyan).
 
 Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs` intact so the same local prototype can be handed to Sites. Before a Sites handoff, run `npm run build` and `npm run test:sites`; the build must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.

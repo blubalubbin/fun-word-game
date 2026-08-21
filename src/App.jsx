@@ -3,7 +3,38 @@ import { Peer } from "peerjs";
 
 const COPY = "Great ideas begin when curious people keep typing with intention.";
 const MAX_FRIENDS = 3;
-const LANE_COLORS = ["blue", "red", "yellow"];
+const PLAYER_COLORS = ["#00a878", "#075cff", "#fa432a", "#f5bf00"];
+
+function hexToHsv(hex) {
+  const [r, g, b] = hex.match(/[a-f\d]{2}/gi).map((value) => parseInt(value, 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  let hue = 0;
+  if (delta) {
+    if (max === r) hue = ((g - b) / delta) % 6;
+    else if (max === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+  }
+  return { h: ((hue * 60) + 360) % 360, s: max ? delta / max : 0, v: max };
+}
+
+function hsvToHex({ h, s, v }) {
+  const chroma = v * s;
+  const section = h / 60;
+  const x = chroma * (1 - Math.abs((section % 2) - 1));
+  const [r1, g1, b1] = section < 1 ? [chroma, x, 0] : section < 2 ? [x, chroma, 0] : section < 3 ? [0, chroma, x] : section < 4 ? [0, x, chroma] : section < 5 ? [x, 0, chroma] : [chroma, 0, x];
+  const m = v - chroma;
+  return `#${[r1, g1, b1].map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function mixHsv(colors) {
+  if (colors.length === 1) return colors[0];
+  const values = colors.map(hexToHsv);
+  const radians = values.map(({ h }) => h * Math.PI / 180);
+  const hue = (Math.atan2(radians.reduce((sum, angle) => sum + Math.sin(angle), 0), radians.reduce((sum, angle) => sum + Math.cos(angle), 0)) * 180 / Math.PI + 360) % 360;
+  return hsvToHex({ h: hue, s: values.reduce((sum, color) => sum + color.s, 0) / values.length, v: values.reduce((sum, color) => sum + color.v, 0) / values.length });
+}
 
 function score(text, startedAt, errors) {
   const minutes = Math.max((Date.now() - startedAt) / 60000, 1 / 60000);
@@ -14,7 +45,7 @@ function score(text, startedAt, errors) {
 }
 
 function blankFriend(index) {
-  return { id: `waiting-${index}`, name: "WAITING…", progress: 0, wpm: "—", accuracy: "—", waiting: true };
+  return { id: `waiting-${index}`, name: "WAITING…", progress: 0, wpm: "—", accuracy: "—", color: PLAYER_COLORS[index + 1], waiting: true };
 }
 
 export function App() {
@@ -29,6 +60,7 @@ export function App() {
   const [friends, setFriends] = useState([]);
   const [inviteUrl, setInviteUrl] = useState(roomId ? window.location.href : "");
   const [roomStatus, setRoomStatus] = useState(roomId ? "JOINING ROOM" : "READY TO HOST");
+  const [selfColor, setSelfColor] = useState(PLAYER_COLORS[0]);
   const inputRef = useRef(null);
   const peerRef = useRef(null);
   const connectionsRef = useRef(new Map());
@@ -40,8 +72,8 @@ export function App() {
   localStateRef.current = { progress, wpm: current.wpm, accuracy: current.accuracy, finished };
 
   function hostRoster() {
-    const guests = [...connectionsRef.current.values()].map(({ id, name, state }) => ({ id, name, ...state }));
-    return [{ id: "host", name: "HOST", ...localStateRef.current }, ...guests];
+    const guests = [...connectionsRef.current.values()].map(({ id, name, color, state }) => ({ id, name, color, ...state }));
+    return [{ id: "host", name: "HOST", color: PLAYER_COLORS[0], ...localStateRef.current }, ...guests];
   }
 
   function broadcastRoster() {
@@ -67,10 +99,11 @@ export function App() {
           id: connection.peer,
           slot,
           name: `FRIEND ${slot}`,
+          color: PLAYER_COLORS[slot],
           connection,
           state: { progress: 0, wpm: 0, accuracy: 100, finished: false },
         });
-        connection.send({ type: "welcome", selfId: connection.peer });
+        connection.send({ type: "welcome", selfId: connection.peer, color: PLAYER_COLORS[slot] });
         const count = connectionsRef.current.size;
         setRoomStatus(`${count} FRIEND${count === 1 ? "" : "S"} CONNECTED`);
         broadcastRoster();
@@ -90,6 +123,7 @@ export function App() {
         }
       } else if (!isHost && message.type === "welcome") {
         selfIdRef.current = message.selfId;
+        setSelfColor(message.color);
       } else if (!isHost && message.type === "roster") {
         setFriends(message.roster.filter((racer) => racer.id !== selfIdRef.current));
       } else if (!isHost && message.type === "full") {
@@ -224,10 +258,18 @@ export function App() {
   const visibleFriends = [...friends.slice(0, MAX_FRIENDS)];
   while (visibleFriends.length < MAX_FRIENDS) visibleFriends.push(blankFriend(visibleFriends.length));
 
+  const positions = new Map();
+  function addPosition(index, color, name) {
+    const position = Math.min(COPY.length - 1, Math.max(0, index));
+    positions.set(position, [...(positions.get(position) || []), { color, name }]);
+  }
+  addPosition(typed.length, selfColor, "YOU");
+  friends.filter((friend) => !friend.waiting).forEach((friend) => addPosition(Math.round((friend.progress / 100) * COPY.length), friend.color, friend.name));
+
   return <main className={`app font-${font}`} onClick={begin}>
     <header><div className="brand">TYPE RACE <span>/</span> FRIENDS</div><div className="header-actions"><button className="text-button" data-invite-url={inviteUrl || undefined} onClick={(event) => { event.stopPropagation(); shareRoom(); }}>{copied ? "LINK COPIED" : roomId ? "COPY ROOM LINK" : "INVITE FRIENDS"}</button><div className="race-length">{roomStatus}</div></div></header>
-    <section className="raceboard" aria-label="Friend race standings"><div className="racer you"><span>YOU</span><div><i style={{ width: `${progress}%` }} /></div><b>{current.wpm || "—"} WPM</b><em>{current.accuracy}%</em></div>{visibleFriends.map((racer, index) => <div className={`racer ${LANE_COLORS[index]} ${racer.waiting ? "waiting" : ""}`} key={racer.id}><span>{racer.name}</span><div><i style={{ width: `${racer.progress}%` }} /></div><b>{racer.wpm || "—"} WPM</b><em>{racer.accuracy === "—" ? "—" : `${racer.accuracy}%`}</em></div>)}</section>
-    <section className="typing-zone" aria-label="Typing challenge"><p className="eyebrow">{finished ? "RACE COMPLETE" : startedAt ? "TYPE THE LINE" : "PRESS ANY KEY TO START"}</p><div className="copy" aria-hidden="true">{COPY.split("").map((letter, index) => { const state = index < typed.length ? "correct" : index === typed.length ? "cursor" : "future"; return <span key={`${letter}-${index}`} className={state}>{letter}</span>; })}</div><input ref={inputRef} className="typing-input" value={typed} onChange={type} onFocus={begin} aria-label="Type the displayed sentence" autoComplete="off" autoCapitalize="off" spellCheck="false" /><p className="quiet">Only the correct key moves you forward. Mistakes stay in place—no backspace needed.</p></section>
+    <section className="raceboard" aria-label="Friend race standings"><div className="racer you" style={{ "--lane": selfColor }}><span>YOU</span><div><i style={{ width: `${progress}%` }} /></div><b>{current.wpm || "—"} WPM</b><em>{current.accuracy}%</em></div>{visibleFriends.map((racer) => <div className={`racer ${racer.waiting ? "waiting" : ""}`} style={{ "--lane": racer.color }} key={racer.id}><span>{racer.name}</span><div><i style={{ width: `${racer.progress}%` }} /></div><b>{racer.wpm || "—"} WPM</b><em>{racer.accuracy === "—" ? "—" : `${racer.accuracy}%`}</em></div>)}</section>
+    <section className="typing-zone" aria-label="Typing challenge"><p className="eyebrow">{finished ? "RACE COMPLETE" : startedAt ? "TYPE THE LINE" : "PRESS ANY KEY TO START"}</p><div className="copy" aria-hidden="true">{COPY.split("").map((letter, index) => { const racersHere = positions.get(index) || []; const classes = [index < typed.length ? "correct" : "future"]; if (index === typed.length) classes.push("target"); if (index === typed.length - 1) classes.push("caret"); if (index === 0 && typed.length === 0) classes.push("cursor-start"); if (racersHere.length) classes.push("player-position"); if (racersHere.length > 1) classes.push("overlap"); return <span key={`${letter}-${index}`} className={classes.join(" ")} data-racers-here={racersHere.map(({ name }) => name).join(", ") || undefined} style={racersHere.length ? { "--position-color": mixHsv(racersHere.map(({ color }) => color)) } : undefined}>{letter}</span>; })}</div><input ref={inputRef} className="typing-input" value={typed} onChange={type} onFocus={begin} aria-label="Type the displayed sentence" autoComplete="off" autoCapitalize="off" autoCorrect="off" inputMode="text" enterKeyHint="done" spellCheck="false" /><p className="quiet">Only the correct key moves you forward. Mistakes stay in place—no backspace needed.</p></section>
     <footer><div className="metric"><small>WPM</small><strong>{current.wpm || "—"}</strong><span>WORDS PER MINUTE</span></div><div className="metric"><small>ACCURACY</small><strong>{current.accuracy}%</strong><span>PRECISION</span></div><div className="metric"><small>RHYTHM</small><strong>{startedAt ? `${Math.max(0, 93 - errors * 4)}%` : "—"}</strong><span>STEADY FLOW</span></div><div className="metric action-metric">{finished ? <><small>NEW FONT UNLOCKED</small><strong className="unlock">DISPLAY</strong><span>CHOOSE IT ABOVE</span></> : <><small>RACE IN PROGRESS</small><button onClick={(event) => { event.stopPropagation(); restart(); }}>RESTART <span>↗</span></button><span>ESC TO RESET</span></>}</div></footer>
     {unlocked && <aside className="font-picker" aria-label="Unlocked fonts"><span>TYPEFACE</span><button className={font === "clean" ? "active" : ""} onClick={() => setFont("clean")}>CLEAN</button><button className={font === "display" ? "active" : ""} onClick={() => setFont("display")}>DISPLAY</button></aside>}
   </main>;
